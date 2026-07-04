@@ -149,3 +149,61 @@ Tinytest.add('Utils - namespace', function (test) {
   test.equal(global.O, o);
   test.equal(result, o);
 });
+
+Tinytest.add('Utils - extend chains initialize base class state', function (test) {
+  class Base {
+    constructor(options) {
+      this.baseInitialized = true;
+      this.options = options;
+    }
+  }
+
+  var Level1 = Iron.utils.extend(Base, {one: true});
+  var Level2 = Iron.utils.extend(Level1, {two: true});
+  var Level3 = Iron.utils.extend(Level2, {three: true});
+
+  var c = new Level3({key: 'value'});
+  test.isTrue(c.baseInitialized, 'base constructor should run for a third-level extend');
+  test.equal(c.options && c.options.key, 'value', 'constructor arguments should reach the base class');
+  test.isTrue(c.one === true && c.two === true && c.three === true, 'prototype props from every level');
+  test.isTrue(c instanceof Base, 'instanceof Base');
+  test.isTrue(c instanceof Level1 && c instanceof Level2, 'instanceof intermediate levels');
+  test.equal(c.constructor, Level3, 'instances report the leaf constructor');
+});
+
+Tinytest.add('Utils - extend custom constructors run after full parent construction', function (test) {
+  var order = [];
+
+  class Base {
+    constructor() {
+      order.push('base');
+      this.fromBase = true;
+    }
+  }
+
+  var Middle = Iron.utils.extend(Base, {
+    constructor: function () {
+      order.push('middle');
+      test.isTrue(this.fromBase, 'parent state is available in the custom constructor');
+    }
+  });
+
+  var Leaf = Iron.utils.extend(Middle, {
+    constructor: function () {
+      order.push('leaf');
+    }
+  });
+
+  new Leaf;
+  test.equal(order, ['base', 'middle', 'leaf'], 'constructors run base-first at every level');
+});
+
+Tinytest.add('Utils - extend does not copy parent registry name', function (test) {
+  class Base {}
+  var Named = Iron.utils.extend(Base, {name: 'NamedController'});
+  var Child = Iron.utils.extend(Named, {});
+
+  test.equal(Named._name, 'NamedController');
+  test.isFalse(Object.prototype.hasOwnProperty.call(Child, '_name'),
+    'a child must not receive its parent _name as an own registry key');
+});

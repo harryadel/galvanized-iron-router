@@ -159,3 +159,22 @@ Tinytest.add('RouteController - init runs exactly once per instantiation', funct
   extendRoute.createController({});
   test.equal(count, 1, 'init should run once for extend() controllers');
 });
+
+Tinytest.add('RouteController - multi-level extend chains produce initialized controllers', function (test) {
+  var ApplicationController = Iron.RouteController.extend({
+    appLevel: true
+  });
+  var PostController = ApplicationController.extend({
+    postLevel: true
+  });
+
+  var router = new Iron.Router({autoStart: false, autoRender: false});
+  var route = router.route('/posts-extend-chain', {controller: PostController});
+  var c = route.createController({});
+
+  test.isTrue(c.appLevel === true && c.postLevel === true, 'prototype properties from both levels');
+  test.isTrue(Array.isArray(c.params), 'params initialized by RouteController constructor');
+  test.isTrue(!!c.options, 'options initialized');
+  test.isTrue(!!c._layout, 'layout initialized by the Controller base constructor');
+  test.instanceOf(c, Iron.RouteController);
+});
