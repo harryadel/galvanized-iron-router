@@ -243,3 +243,44 @@ if (Meteor.isServer) {
     });
   });
 }
+
+if (Meteor.isServer) {
+  Router.route('/test-async-post', {where: 'server'}).post(async function () {
+    await new Promise(function (resolve) { setTimeout(resolve, 10); });
+    this.response.setHeader('Content-Type', 'application/json');
+    this.response.end(JSON.stringify({ok: true, got: this.request.body}));
+  });
+
+  Router.route('/test-async-error', {where: 'server'}).get(async function () {
+    await new Promise(function (resolve) { setTimeout(resolve, 5); });
+    throw new Error('async route failure');
+  });
+
+  Tinytest.addAsync('Router - server - async REST action can await before responding', function (test, onComplete) {
+    fetch(Meteor.absoluteUrl('test-async-post'), {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({n: 42})
+    }).then(function (res) {
+      test.equal(res.status, 200);
+      return res.json();
+    }).then(function (data) {
+      test.isTrue(data.ok, 'async action responded after its await');
+      test.equal(data.got && data.got.n, 42, 'parsed body available in async action');
+      onComplete();
+    }).catch(function (err) {
+      test.fail('request failed: ' + err.message);
+      onComplete();
+    });
+  });
+
+  Tinytest.addAsync('Router - server - async REST action rejection returns a 500', function (test, onComplete) {
+    fetch(Meteor.absoluteUrl('test-async-error')).then(function (res) {
+      test.equal(res.status, 500, 'rejection becomes a 500 instead of a hung request');
+      onComplete();
+    }).catch(function (err) {
+      test.fail('request failed: ' + err.message);
+      onComplete();
+    });
+  });
+}

@@ -220,3 +220,64 @@ if (Meteor.isServer && !Meteor.isFibersDisabled) {
     });
   });
 }
+
+Tinytest.addAsync('MiddlewareStack - async handler rejection reaches done', function (test, onComplete) {
+  var stack = new Iron.MiddlewareStack;
+
+  stack.push(async function (req, res, next) {
+    throw new Error('async boom');
+  }, {where: Meteor.isServer ? 'server' : 'client'});
+
+  stack.dispatch('/', {}, function (err) {
+    test.isTrue(!!err, 'done should receive the rejection');
+    test.equal(err && err.message, 'async boom');
+    onComplete();
+  });
+});
+
+Tinytest.addAsync('MiddlewareStack - this.next() works after an await', function (test, onComplete) {
+  var stack = new Iron.MiddlewareStack;
+  var sequence = [];
+
+  var where = {where: Meteor.isServer ? 'server' : 'client'};
+
+  stack.push(async function (req, res, next) {
+    await new Promise(function (resolve) { setTimeout(resolve, 10); });
+    sequence.push('async first');
+    this.next();
+  }, where);
+
+  stack.push(function (req, res, next) {
+    sequence.push('sync second');
+    this.next();
+  }, where);
+
+  stack.dispatch('/', {}, function (err) {
+    test.isUndefined(err, 'no error expected');
+    test.equal(sequence, ['async first', 'sync second'], 'handlers ran in order across the await');
+    onComplete();
+  });
+});
+
+Tinytest.addAsync('MiddlewareStack - async rejection is caught by error middleware', function (test, onComplete) {
+  var stack = new Iron.MiddlewareStack;
+  var caught = null;
+
+  var whereOpt = {where: Meteor.isServer ? 'server' : 'client'};
+
+  stack.push(async function (req, res, next) {
+    await new Promise(function (resolve) { setTimeout(resolve, 5); });
+    throw new Error('rejected later');
+  }, whereOpt);
+
+  stack.push(function (err, req, res, next) {
+    caught = err;
+    next();
+  }, whereOpt);
+
+  stack.dispatch('/', {}, function (err) {
+    test.equal(caught && caught.message, 'rejected later', 'error middleware saw the rejection');
+    test.isUndefined(err, 'error middleware consumed the error');
+    onComplete();
+  });
+});
