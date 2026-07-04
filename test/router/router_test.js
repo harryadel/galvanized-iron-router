@@ -204,3 +204,40 @@ if (Meteor.isClient) {
   });
   */
 }
+
+if (Meteor.isServer) {
+  Tinytest.add('Router - server - configureBodyParsers registers global before hooks', function (test) {
+    var router = new Iron.Router({autoStart: false, autoRender: false});
+    var before = router.getHooks('onBeforeAction', 'anyRoute').length;
+    router.configureBodyParsers();
+    var after = router.getHooks('onBeforeAction', 'anyRoute').length;
+    test.equal(after - before, 2, 'json and urlencoded body parsers should be added as instance hooks');
+  });
+
+  Tinytest.addAsync('Router - server - REST route receives parsed JSON body', function (test, onComplete) {
+    Router.route('/test-body-parser-post', {where: 'server'}).post(function () {
+      this.response.setHeader('Content-Type', 'application/json');
+      this.response.end(JSON.stringify({received: this.request.body}));
+    });
+
+    // The test bootstrap disables autoStart, so attach the global router
+    // (and its body parsers) to the webapp for this end-to-end request.
+    Router.start();
+
+    var payload = {title: 'galvanized', count: 3};
+
+    fetch(Meteor.absoluteUrl('test-body-parser-post'), {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload)
+    }).then(function (res) {
+      return res.json();
+    }).then(function (data) {
+      test.equal(data.received, payload, 'request.body should contain the parsed JSON payload');
+      onComplete();
+    }).catch(function (err) {
+      test.fail('POST request failed: ' + err.message);
+      onComplete();
+    });
+  });
+}
