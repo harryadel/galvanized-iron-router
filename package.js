@@ -1,7 +1,7 @@
 Package.describe({
   name: 'vlasky:galvanized-iron-router',
   summary: 'Galvanized Iron Router - a client/server routing system for Meteor 2.0 and 3.0+',
-  version: '2.1.3',
+  version: '2.2.0',
   git: 'https://github.com/vlasky/galvanized-iron-router'
 });
 

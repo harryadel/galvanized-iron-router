@@ -1,6 +1,7 @@
-Unreleased
+v2.2.0 / 2026-07-05
 ==================
 * Verified against Meteor 3.5 (released 2026-07-01, Node 24), Meteor 3.4.1 (Node 22) and Meteor 2.8.1 (Node 14, fibers, npm `body-parser` branch): full test suite passes on all three
+* Verified with Meteor 3.5's Rspack bundler integration (`rspack@1.1.0`, the default in new 3.5 apps): dev and production builds succeed, client routing (layout/yield/data contexts/`Router.go`) and server REST routes (JSON body parsing, async actions) all work. Rspack bundles app code only; Atmosphere packages such as this one continue to be built by the classic Meteor bundler
 * Server REST tests now obtain `fetch` from the core `fetch` package (test-only dependency) so they run on Meteor 2, whose Node 14 has no global fetch
 * Fix server body parsers never being installed since the v2.1.0 ES6 module conversion: `this.request.body` was always `undefined` for server REST routes (`configureBodyParsers` was calling a do-nothing static stub). Server `Router.start()` is now also idempotent
 * Support async (promise-returning) route handlers, the common case on Meteor 3

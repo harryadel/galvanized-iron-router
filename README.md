@@ -1,7 +1,7 @@
 Galvanized Iron Router
 ==============================================================================
 
-[![Version](https://img.shields.io/badge/version-2.1.1-blue.svg)](https://atmospherejs.com/vlasky/galvanized-iron-router)
+[![Version](https://img.shields.io/badge/version-2.2.0-blue.svg)](https://atmospherejs.com/vlasky/galvanized-iron-router)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 Galvanized Iron Router is a fork of the classic Iron Router package, giving it a new lease of life by making it fully compatible with Meteor 3.0 and beyond. Just as galvanizing iron makes it rust-resistant and longer lasting, this fork ensures Iron Router continues to work reliably with modern Meteor applications.
@@ -19,7 +19,7 @@ meteor add vlasky:galvanized-iron-router
 
 ## Compatibility
 
-Galvanized Iron Router supports all versions of Meteor from version 2.8.1 onwards. It has been tested on Meteor 2.8.1 and 3.4.
+Galvanized Iron Router supports all versions of Meteor from version 2.8.1 onwards. It has been tested on Meteor 2.8.1, 3.4 and 3.5, including Meteor 3.5's Rspack bundler integration.
 
 For Meteor 3.0+ projects, Galvanized Iron Router automatically adapts to:
 - Async/await execution model (no Fibers dependency)
@@ -73,6 +73,14 @@ Router.route('/restful', {where: 'server'})
   })
   .post(function () {
     this.response.end('post request\n');
+  });
+
+// Async actions are fully supported: the router waits for the promise,
+// after-hooks run on completion, and a rejection becomes a 500 response
+Router.route('/api/items', {where: 'server'})
+  .post(async function () {
+    var _id = await Items.insertAsync(this.request.body);
+    this.response.end(JSON.stringify({_id: _id}));
   });
 
 ```

@@ -584,8 +584,12 @@ Now that we've named our route, we can get access to the route object if needed
 like this:
 
 ```javascript
-Router.routes['post.show']
+Router.findRouteByName('post.show')
 ```
+
+The legacy `Router.routes['post.show']` property lookup also still works, but
+`findRouteByName` is preferred: it is safe for any route name, including ones
+that collide with Array members (a route named `push` or `length`).
 
 But we can also use the route name in the `Router.go` method like this:
 
@@ -936,6 +940,23 @@ Router.route('/webhooks/stripe', { where: 'server' })
   .put(function () {
     // PUT /webhooks/stripe
   })
+```
+
+### Async Route Actions
+Route actions and hooks can be `async` functions, the common case on Meteor 3
+where most server APIs must be awaited. The router waits for the returned
+promise to settle: `onAfterAction` hooks run after the action has completed
+(not after its first `await`), and `await ...; this.next();` works as
+expected. On the server, if an async action throws or rejects, the response is
+a 500 error instead of a request left hanging.
+
+```javascript
+Router.route('/api/items', { where: 'server' })
+  .post(async function () {
+    var _id = await Items.insertAsync(this.request.body);
+    this.response.setHeader('Content-Type', 'application/json');
+    this.response.end(JSON.stringify({ _id: _id }));
+  });
 ```
 
 ### 404s and Client vs Server Routes
