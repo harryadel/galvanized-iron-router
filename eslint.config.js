@@ -31,8 +31,6 @@ export default [
         RouteController: "writable",
         // Test globals
         Tinytest: "readonly",
-        // Underscore
-        _: "readonly",
       },
     },
     rules: {
@@ -84,7 +82,6 @@ export default [
       "node_modules/**",
       ".meteor/**",
       "examples/**",
-      "lib/url/old_compiler.js",
     ],
   },
 ];

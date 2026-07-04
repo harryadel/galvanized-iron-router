@@ -13,5 +13,5 @@
     "typeRoots": ["./types", "./node_modules/@types"]
   },
   "include": ["lib/**/*.js", "types/**/*.d.ts", "index.d.ts"],
-  "exclude": ["node_modules", ".npm", ".meteor", "lib/url/old_compiler.js", "lib/url/compiler.js"]
+  "exclude": ["node_modules", ".npm", ".meteor"]
 }

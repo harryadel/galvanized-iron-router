@@ -22,6 +22,7 @@ Unreleased
   * The base constructor now skips the call when a subclass declares (via a `_deferInit` prototype getter) that it calls `init()` itself once construction is complete, so `init()` runs exactly once, on a fully constructed controller
 * Fix server HEAD responses calling `res.end()` twice in the no-client-routes branch
 * Add regression tests throughout: end-to-end server REST tests (JSON body parsing, async actions, async 500s), multi-level inheritance instance state, native-class hook/event collection, prototype-safe query parsing, Array-member route names, and init-once semantics
+* Housekeeping: declare the `reactive-var` dependency on the server too (previously satisfied only via Blaze's transitive dependency), remove the long-dead `lib/url/old_compiler.js`, give two test files descriptive names, and bring `lib/url/compiler.js` under type checking
 
 v2.1.3 / 2026-06-23
 ==================

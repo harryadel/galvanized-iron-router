@@ -22,8 +22,8 @@ Package.onUse(function (api) {
   api.use('random');
   api.use('tracker');
 
-  // Client-side dependencies
-  api.use('reactive-var', 'client');
+  // Reactive state (DynamicTemplate uses ReactiveVar on both client and server)
+  api.use('reactive-var');
   api.use('reactive-dict', 'client');
   api.use('jquery@1.11.11 || 3.0.0', 'client');
 
@@ -73,7 +73,7 @@ Package.onTest(function (api) {
   api.addFiles('test/url/url_test.js', ['client', 'server']);
   api.addFiles('test/middleware/handler_test.js');
   api.addFiles('test/middleware/middleware_stack_test.js');
-  api.addFiles('test/middleware/notes.js');
+  api.addFiles('test/middleware/middleware_stack_dispatch_test.js');
   api.addFiles('test/dynamic-template/dynamic_template_test.html', 'client');
   api.addFiles('test/dynamic-template/dynamic_template_test.js', 'client');
   api.addFiles('test/layout/layout_test.html', 'client');
@@ -82,7 +82,8 @@ Package.onTest(function (api) {
   api.addFiles('test/controller/controller_test.html', 'client');
   api.addFiles('test/controller/wait_list_test.js', 'client');
   api.addFiles('test/controller/controller_test.js', 'client');
-  api.addFiles('test/router/helpers.js');
+  // Test bootstrap: disables autoStart/autoRender before the router tests load
+  api.addFiles('test/router/test_setup.js');
   api.addFiles('test/router/route_test.js');
   api.addFiles('test/router/router_test.js');
   api.addFiles('test/router/route_controller_test.js');
