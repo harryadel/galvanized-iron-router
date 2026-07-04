@@ -214,16 +214,18 @@ if (Meteor.isServer) {
     test.equal(after - before, 2, 'json and urlencoded body parsers should be added as instance hooks');
   });
 
+  // Route definition and start live at module scope: Tinytest re-runs test
+  // bodies on every client test run, and defining the same route twice throws.
+  Router.route('/test-body-parser-post', {where: 'server'}).post(function () {
+    this.response.setHeader('Content-Type', 'application/json');
+    this.response.end(JSON.stringify({received: this.request.body}));
+  });
+
+  // The test bootstrap disables autoStart, so attach the global router
+  // (and its body parsers) to the webapp for the end-to-end test below.
+  Router.start();
+
   Tinytest.addAsync('Router - server - REST route receives parsed JSON body', function (test, onComplete) {
-    Router.route('/test-body-parser-post', {where: 'server'}).post(function () {
-      this.response.setHeader('Content-Type', 'application/json');
-      this.response.end(JSON.stringify({received: this.request.body}));
-    });
-
-    // The test bootstrap disables autoStart, so attach the global router
-    // (and its body parsers) to the webapp for this end-to-end request.
-    Router.start();
-
     var payload = {title: 'galvanized', count: 3};
 
     fetch(Meteor.absoluteUrl('test-body-parser-post'), {
