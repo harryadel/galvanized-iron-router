@@ -78,3 +78,27 @@ Two
 {{getValueFromTemplate}}
 {{getValueFromHost}}
 </template>
+
+<template name="NearestObjectData">
+  {{#with outerPrimitive}}
+    {{#with innerObject}}
+      {{> DynamicTemplate template="ShowName"}}
+    {{/with}}
+  {{/with}}
+</template>
+
+<template name="ShowName">{{name}}</template>
+
+<template name="HijackHost">
+  {{#with hijackData}}
+    {{> DynamicTemplate template="HijackReal"}}
+  {{/with}}
+</template>
+
+<template name="HijackReal">real-{{name}}</template>
+
+<template name="ExtraArgsHost">
+  {{#with parentData}}
+    {{> DynamicTemplate template="ShowName" extra="e"}}
+  {{/with}}
+</template>

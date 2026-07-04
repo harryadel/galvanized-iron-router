@@ -329,3 +329,90 @@ Tinytest.add('Layout - hasRegion', function (test) {
     test.equal(el.innerHTML.compact(), 'yes', 'hasRegion mis-reported false');
   });
 });
+
+Tinytest.add('Layout - bare yield unaffected by enclosing inclusion arguments', function (test) {
+  // Regression: {{> yield}} inside a template that was itself included with
+  // a region= argument ({{> BoundaryWidget region="sidebar"}}) walked past
+  // its template boundary, adopted region="sidebar" and rendered the wrong
+  // region.
+  const layout = new Iron.Layout({template: 'BoundaryLayout'});
+
+  withRenderedTemplate(layout.create(), (el) => {
+    layout.render('Plain');
+    Tracker.flush();
+    test.equal(el.innerHTML.compact(), 'layout-[plain]');
+  });
+});
+
+Template.StringDataLayout.helpers({
+  stringRegionLikeData: function () {
+    return 'aside';
+  }
+});
+Tinytest.add('Layout - bare yield unaffected by a string data context', function (test) {
+  // Regression: getInclusionArguments() fell back to Blaze.getData() and
+  // treated any string data context as a positional region argument, so the
+  // yield rendered region "aside" instead of the main region.
+  const layout = new Iron.Layout({template: 'StringDataLayout'});
+
+  withRenderedTemplate(layout.create(), (el) => {
+    layout.render('Plain');
+    Tracker.flush();
+    test.equal(el.innerHTML.compact(), 'layout-[plain]');
+  });
+});
+
+Template.ReactiveTemplateLayout.helpers({
+  layoutTemplate: function () {
+    return reactiveTemplate.get();
+  }
+});
+Tinytest.add('Layout - reactive template argument to Layout block helper', function (test) {
+  // Regression: DynamicTemplate.args() snapshotted arguments nonreactively
+  // forever, freezing {{#Layout template=myReactiveTemplate}}.
+  reactiveTemplate.set('LayoutRed');
+  withRenderedTemplate('ReactiveTemplateLayout', (el) => {
+    test.equal(el.innerHTML.compact(), 'red-main');
+
+    reactiveTemplate.set('LayoutBlue');
+    Tracker.flush();
+    test.equal(el.innerHTML.compact(), 'blue-main');
+  });
+});
+
+Template.ReactiveDataLayout.helpers({
+  layoutData: function () {
+    return reactiveData.get();
+  }
+});
+Tinytest.add('Layout - reactive data argument to Layout block helper', function (test) {
+  reactiveData.set('one');
+  withRenderedTemplate('ReactiveDataLayout', (el) => {
+    test.equal(el.innerHTML.compact(), 'layout-one-main-one');
+
+    reactiveData.set('two');
+    Tracker.flush();
+    test.equal(el.innerHTML.compact(), 'layout-two-main-two');
+  });
+});
+
+// a reactive region name we can use
+const reactiveRegion = new ReactiveVar;
+
+Template.ReactiveRegionLayout.helpers({
+  contentRegion: function () {
+    return reactiveRegion.get();
+  }
+});
+Tinytest.add('Layout - reactive region argument to contentFor clears the old region', function (test) {
+  // When a reactive region= changes, the previously populated region must be
+  // cleared, not left rendering the same content in two places.
+  reactiveRegion.set('footer');
+  withRenderedTemplate('ReactiveRegionLayout', (el) => {
+    test.equal(el.innerHTML.compact(), 'm[]a[stuff]b[]');
+
+    reactiveRegion.set('aside');
+    Tracker.flush();
+    test.equal(el.innerHTML.compact(), 'm[]a[]b[stuff]');
+  });
+});

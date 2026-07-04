@@ -96,3 +96,53 @@
 <template name="Footer">
   footer
 </template>
+
+<template name="BoundaryLayout">
+  layout-
+  {{> BoundaryWidget region="sidebar"}}
+</template>
+
+<template name="BoundaryWidget">
+  [{{> yield}}]
+</template>
+
+<template name="StringDataLayout">
+  layout-
+  {{#with stringRegionLikeData}}
+    {{> StringDataWidget}}
+  {{/with}}
+</template>
+
+<template name="StringDataWidget">
+  [{{> yield}}]
+</template>
+
+<template name="ReactiveTemplateLayout">
+  {{#Layout template=layoutTemplate}}
+    main
+  {{/Layout}}
+</template>
+
+<template name="LayoutRed">
+  red-{{> yield}}
+</template>
+
+<template name="LayoutBlue">
+  blue-{{> yield}}
+</template>
+
+<template name="ReactiveDataLayout">
+  {{#Layout template="LayoutWithData" data=layoutData}}
+    main-{{this}}
+  {{/Layout}}
+</template>
+
+<template name="TwoRegionLayout">
+  m[{{> yield}}]a[{{> yield "footer"}}]b[{{> yield "aside"}}]
+</template>
+
+<template name="ReactiveRegionLayout">
+  {{#Layout template="TwoRegionLayout"}}
+    {{#contentFor region=contentRegion}}stuff{{/contentFor}}
+  {{/Layout}}
+</template>

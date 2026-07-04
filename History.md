@@ -32,6 +32,17 @@ Unreleased
   * Added missing APIs: `Iron.Controller`, `Iron.Route`, `Iron.Handler`, `DEFAULT_REGION`, `MiddlewareStack#onServerDispatch`, and the path-less `stack.push(fn, options)` overloads
   * `Location.onGo`/`onPopState` callbacks are now typed with the state as `this` (they receive no arguments); client-only entry exports (`Location`, `State`, `WaitList`, hash-url helpers) are marked as such
 * `Router.onBeforeAction()` and the other hook registration methods now return the router (chainable), as `addHook` already did
+* Fix Blaze 3 data-context resolution in dynamic templates (all with regression tests)
+  * `getDataContext()` now returns the *nearest* acceptable data context, matching Blaze's own scoping; previously a primitive context farther up the view tree beat a nearer object context
+  * A bare `{{> yield}}` inside a template that was itself included with a `region=` argument (`{{> Widget region="sidebar"}}`) no longer adopts that argument and renders into the wrong region: the inclusion-argument walk stops at template boundaries
+  * A string data context is no longer mistaken for a positional region argument; the `Blaze.getData` fallback applies only to block helpers like `{{#contentFor "footer"}}`
+  * Helper arguments are read reactively again (upstream behaviour): `{{#Layout template=reactiveTmpl data=reactiveData}}` now updates when the bindings change instead of freezing their first values
+  * `{{> DynamicTemplate}}` resolves `template=`/`data=` from the actual inclusion arguments first; a helper or data context property named `template` or `data` can no longer hijack them (previously an absent `data=` argument was resolved via `lookup('data')`, replacing the inherited parent context)
+  * An object data context mixing reserved keys with ordinary ones (e.g. `{template: 'invoice', title: ...}`) is now treated as real data rather than inclusion arguments
+  * `{ value: X }` unwrapping only runs on Blaze 3, so a legitimate `{value: ...}` data context is untouched on Blaze 2
+  * Region hooks (`onRegionCreated`/`onRegionRendered`/`onRegionDestroyed`) now receive the region name as their first argument as documented (previously always `undefined`)
+  * A reactive `region=` on `contentFor` clears the previously populated region when it changes, instead of leaving the content rendered in both regions
+  * Extra keyword arguments on Iron's own helpers (`{{> DynamicTemplate template="X" extra=y}}`) remain control arguments and don't leak into the inherited data context; the mixed-key-is-data rule applies only to user inclusions
 
 v2.1.3 / 2026-06-23
 ==================

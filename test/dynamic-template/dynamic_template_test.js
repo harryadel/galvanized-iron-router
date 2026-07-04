@@ -446,3 +446,49 @@ Tinytest.add('DynamicTemplate - lookup hosts', function (test) {
     test.equal(el.innerHTML.compact(), '1');
   });
 });
+
+Template.NearestObjectData.helpers({
+  outerPrimitive: function () {
+    return 'outer-primitive';
+  },
+  innerObject: function () {
+    return {name: 'inner'};
+  }
+});
+Tinytest.add('DynamicTemplate - nearest object data context beats farther primitive', function (test) {
+  // Regression: getDataContext() deferred the nearest valid object while it
+  // kept walking, so a primitive further up the view tree won.
+  withRenderedTemplate('NearestObjectData', (el) => {
+    test.equal(el.innerHTML.compact(), 'inner');
+  });
+});
+
+Template.HijackHost.helpers({
+  hijackData: function () {
+    // a perfectly ordinary data context that happens to have a "data" key
+    return {data: 'wrong-data', name: 'x'};
+  }
+});
+Tinytest.add('DynamicTemplate - absent data argument not hijacked by data context property', function (test) {
+  // Regression: the DynamicTemplate helper resolved its "data" argument via
+  // view.lookup() when no data= was given, so a data context with a "data"
+  // property replaced the inherited parent context.
+  withRenderedTemplate('HijackHost', (el) => {
+    test.equal(el.innerHTML.compact(), 'real-x');
+  });
+});
+
+Template.ExtraArgsHost.helpers({
+  parentData: function () {
+    return {name: 'parent'};
+  }
+});
+Tinytest.add('DynamicTemplate - extra inclusion arguments do not become the data context', function (test) {
+  // {{> DynamicTemplate template="ShowName" extra="e"}} inside {{#with}}:
+  // the argument wrapper {template, extra} is control arguments for Iron's
+  // helper, not a data context, even though it mixes reserved and ordinary
+  // keys. The template must inherit the parent data.
+  withRenderedTemplate('ExtraArgsHost', (el) => {
+    test.equal(el.innerHTML.compact(), 'parent');
+  });
+});
