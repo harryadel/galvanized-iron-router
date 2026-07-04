@@ -62,6 +62,7 @@ Package.onTest(function (api) {
 
   api.use('vlasky:galvanized-iron-router');
   api.use('ecmascript');
+  api.use('fetch', 'server'); // isomorphic fetch: Meteor 2 (Node 14) has no global fetch
   api.use('tinytest');
   api.use('test-helpers');
   api.use('templating');

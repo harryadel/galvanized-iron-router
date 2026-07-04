@@ -206,6 +206,10 @@ if (Meteor.isClient) {
 }
 
 if (Meteor.isServer) {
+  // Global fetch only exists from Node 18 (Meteor 3). The core fetch package
+  // polyfills it on Meteor 2 (and re-exports the native one on Meteor 3).
+  var fetch = require('meteor/fetch').fetch;
+
   Tinytest.add('Router - server - configureBodyParsers registers global before hooks', function (test) {
     var router = new Iron.Router({autoStart: false, autoRender: false});
     var before = router.getHooks('onBeforeAction', 'anyRoute').length;
