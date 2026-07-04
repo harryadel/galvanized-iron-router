@@ -198,3 +198,30 @@ Tinytest.add('Url - missing params', function (test) {
     path.resolve(null, {throwOnMissingParams: true});
   });
 });
+
+Tinytest.add('Url - fromQueryString splits on first = only', function (test) {
+  var q = Url.fromQueryString('token=abc==&plain=1');
+  test.equal(q.token, 'abc==', 'characters after the first = belong to the value');
+  test.equal(q.plain, '1');
+});
+
+Tinytest.add('Url - fromQueryString is safe against Object.prototype key names', function (test) {
+  // previously ?__proto__[]=x crashed dispatch with a TypeError
+  var q = Url.fromQueryString('__proto__[]=x&constructor[]=y&toString=z&a=1');
+  test.equal(q.a, '1', 'ordinary keys still parse');
+  test.isTrue(Object.prototype.hasOwnProperty.call(q, '__proto__'), '__proto__ becomes a plain own key');
+  test.equal(q['__proto__'][0], 'x');
+  test.equal(q['constructor'][0], 'y');
+  test.equal(q['toString'], 'z');
+  test.isUndefined(Object.prototype['__proto__something'], 'Object.prototype untouched');
+  test.equal(Object.getPrototypeOf(q), Object.prototype, 'result prototype not replaced');
+  test.isFalse(Object.prototype.hasOwnProperty.call(Object.prototype, 'x'), 'no prototype pollution');
+});
+
+Tinytest.add('Url - plus is a space in query strings but literal in paths', function (test) {
+  test.equal(Url.fromQueryString('q=a+b').q, 'a b', 'form encoding: + is a space in query values');
+
+  var url = new Url('/search/:term');
+  test.equal(url.params('/search/c%2B%2B').term, 'c++', 'encoded + in path decodes to +');
+  test.equal(url.params('/search/a+b').term, 'a+b', 'literal + in a path segment is not a space');
+});
