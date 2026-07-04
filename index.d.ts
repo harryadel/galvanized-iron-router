@@ -7,11 +7,12 @@ import { Meteor } from 'meteor/meteor';
 import { Blaze } from 'meteor/blaze';
 import { ReactiveDict } from 'meteor/reactive-dict';
 import { Tracker } from 'meteor/tracker';
-import { Mongo } from 'meteor/mongo';
 
 declare module 'meteor/vlasky:galvanized-iron-router' {
-  // Router is exported as an instance with both instance methods and class statics
-  export const Router: InstanceType<typeof globalThis.Router> & typeof globalThis.Router;
+  // The exported Router is a callable router instance (usable as connect
+  // middleware), not the Router class. The class itself is Iron.Router.
+  export const Router: RouterGlobal;
+  export const DEFAULT_REGION: string;
   export {
     RouteController,
     Iron,
@@ -20,12 +21,15 @@ declare module 'meteor/vlasky:galvanized-iron-router' {
     Layout,
     DynamicTemplate,
     MiddlewareStack,
-    WaitList,
     Handler,
     Url,
+    RC,
+    // Client-only exports: present in the client entry module only. The
+    // server entry does not export these (WaitList, Location, State and the
+    // hash-style url helpers are client-side concepts).
+    WaitList,
     Location,
     State,
-    RC,
     urlToHashStyle,
     urlFromHashStyle,
     fixHashPath,
@@ -40,18 +44,18 @@ declare module 'meteor/vlasky:galvanized-iron-router' {
     LayoutOptions,
     InsertOptions,
     RouteParams,
+    ControllerParams,
     QueryParams,
     HttpMethod,
     ParsedUrl,
     RegionTemplate,
     SubscriptionHandleWithWait,
-    Handler,
     DynamicTemplateOptions,
   };
 }
 
-// HTTP method types
-type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'HEAD' | 'OPTIONS';
+// HTTP methods the router wires verb handlers for (Route#get, Route#post, ...)
+type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'HEAD';
 
 // Route parameter types
 interface RouteParams {
@@ -60,6 +64,18 @@ interface RouteParams {
 
 interface QueryParams {
   [key: string]: string | string[] | undefined;
+}
+
+/**
+ * Parsed route/controller parameters: an array of positional match groups
+ * that also carries the named parameters as properties, plus the parsed
+ * query object and hash fragment (e.g. this.params.id, this.params.query.q,
+ * this.params.hash).
+ */
+interface ControllerParams extends Array<any> {
+  [key: string]: any;
+  query: QueryParams;
+  hash: string | null;
 }
 
 // Hook options for filtering routes
@@ -151,7 +167,7 @@ interface RouteOptions {
   action?: (this: RouteController) => void;
   controller?: typeof RouteController | string;
   layoutTemplate?: string;
-  where?: 'client' | 'server' | 'both';
+  where?: 'client' | 'server';
   method?: HttpMethod | HttpMethod[];
   mount?: boolean;
 
@@ -204,7 +220,7 @@ declare class Route {
   url(params?: RouteParams, options?: { query?: QueryParams; hash?: string }): string;
 
   /** Extract parameters from a path */
-  params(path: string): any[];
+  params(path: string): ControllerParams;
 
   /** Find the controller constructor for this route */
   findControllerConstructor(): typeof RouteController;
@@ -218,14 +234,14 @@ declare class Route {
   /** Set controller parameters from URL */
   setControllerParams(controller: RouteController, url: string): void;
 
-  // HTTP method handlers (chainable)
+  // HTTP method handlers (chainable). There is no options() verb; the
+  // supported verbs are exactly those in HttpMethod.
   get(fn: Function): Route;
   post(fn: Function): Route;
   put(fn: Function): Route;
   delete(fn: Function): Route;
   patch(fn: Function): Route;
   head(fn: Function): Route;
-  options(fn: Function): Route;
 
   // Properties
   readonly name: string;
@@ -316,7 +332,7 @@ declare class RouteController extends Controller {
   lookupOption(key: string): any;
 
   /** Get route parameters */
-  getParams(): any[];
+  getParams(): ControllerParams;
 
   /** Set route parameters */
   setParams(value: any[], options?: object): RouteController;
@@ -360,7 +376,7 @@ declare class RouteController extends Controller {
   router: Router;
   route: Route;
   state: ReactiveDict;
-  params: RouteParams & any[];
+  params: ControllerParams;
   url: string;
   originalUrl: string;
   method: HttpMethod;
@@ -481,6 +497,9 @@ declare class Layout extends DynamicTemplate {
   _regions: { [key: string]: DynamicTemplate };
 }
 
+/** The name of the default (main) layout region. Also Layout.DEFAULT_REGION. */
+declare const DEFAULT_REGION: string;
+
 // Middleware Handler
 declare class Handler {
   constructor(path: string | RegExp | Function, fn?: Function | object, options?: object);
@@ -492,29 +511,42 @@ declare class Handler {
   method?: string | boolean;
   where?: string;
   test(path: string): boolean;
-  params(path: string): any[];
+  params(path: string): ControllerParams;
   resolve(params?: RouteParams, options?: { query?: QueryParams; hash?: string }): string | null;
   clone(): Handler;
+}
+
+// Options accepted when adding a handler to a MiddlewareStack
+interface HandlerOptions {
+  name?: string;
+  mount?: boolean;
+  where?: 'client' | 'server';
+  method?: string;
+  [key: string]: any;
 }
 
 // MiddlewareStack class
 declare class MiddlewareStack {
   constructor();
 
-  /** Push a handler onto the stack */
-  push(path: string | RegExp, fn: Function, options?: { name?: string; mount?: boolean; where?: string }): Handler;
+  /** Push a handler onto the stack (the path defaults to "/") */
+  push(fn: Function, options?: HandlerOptions): Handler;
+  push(path: string | RegExp, fn: Function | string | object, options?: HandlerOptions): Handler;
 
   /** Append handlers to the stack */
   append(...fns: any[]): MiddlewareStack;
 
   /** Insert a handler at a specific index */
-  insertAt(index: number, path: string | RegExp, fn: Function, options?: object): MiddlewareStack;
+  insertAt(index: number, fn: Function, options?: HandlerOptions): MiddlewareStack;
+  insertAt(index: number, path: string | RegExp, fn: Function, options?: HandlerOptions): MiddlewareStack;
 
   /** Insert a handler before a named handler */
-  insertBefore(name: string, path: string | RegExp, fn: Function, options?: object): MiddlewareStack;
+  insertBefore(name: string, fn: Function, options?: HandlerOptions): MiddlewareStack;
+  insertBefore(name: string, path: string | RegExp, fn: Function, options?: HandlerOptions): MiddlewareStack;
 
   /** Insert a handler after a named handler */
-  insertAfter(name: string, path: string | RegExp, fn: Function, options?: object): MiddlewareStack;
+  insertAfter(name: string, fn: Function, options?: HandlerOptions): MiddlewareStack;
+  insertAfter(name: string, path: string | RegExp, fn: Function, options?: HandlerOptions): MiddlewareStack;
 
   /** Find a handler by name */
   findByName(name: string): Handler | undefined;
@@ -523,7 +555,13 @@ declare class MiddlewareStack {
   concat(...stacks: MiddlewareStack[]): MiddlewareStack;
 
   /** Dispatch a request through the stack */
-  dispatch(url: string, context: object, done?: () => void): any;
+  dispatch(url: string, context: object, done?: (err?: any) => void): any;
+
+  /**
+   * Register a callback invoked when a client dispatch hits a server-only
+   * handler. The callback receives the dispatch context as `this`.
+   */
+  onServerDispatch(callback: (this: object, handler: Handler, url: string) => void): MiddlewareStack;
 
   // Properties
   readonly length: number;
@@ -560,7 +598,7 @@ declare class Url {
   exec(path: string): RegExpExecArray | null;
 
   /** Extract parameters from path */
-  params(path: string): any[];
+  params(path: string): ControllerParams;
 
   /** Resolve URL with parameters */
   resolve(params?: RouteParams, options?: { query?: QueryParams; hash?: string; throwOnMissingParams?: boolean }): string | null;
@@ -606,8 +644,10 @@ interface LocationAPI {
   start(): void;
   stop(): void;
   onClick(fn: (event: MouseEvent) => void): void;
-  onGo(cb: (state: State) => void): void;
-  onPopState(cb: (state: State) => void): void;
+  /** The callback receives the new state as `this` (no arguments are passed) */
+  onGo(cb: (this: State) => void): void;
+  /** The callback receives the new state as `this` (no arguments are passed) */
+  onPopState(cb: (this: State) => void): void;
 }
 
 declare const Location: LocationAPI;
@@ -616,32 +656,21 @@ declare function urlToHashStyle(url: string): string;
 declare function urlFromHashStyle(url: string): string;
 declare function fixHashPath(pathname: string): string;
 
+// File-scoped aliases so declarations inside `namespace Iron` and
+// `declare global` can reference the classes above without the names
+// resolving circularly to themselves.
+type ControllerClass = typeof Controller;
+type RouteControllerClass = typeof RouteController;
+type RouteClass = typeof Route;
+type HandlerClass = typeof Handler;
+type LayoutClass = typeof Layout;
+type DynamicTemplateClass = typeof DynamicTemplate;
+type MiddlewareStackClass = typeof MiddlewareStack;
+type WaitListClass = typeof WaitList;
+type UrlClass = typeof Url;
+
 // Iron namespace
 declare namespace Iron {
-  // URL class
-  class Url {
-    constructor(url: string, options?: object);
-
-    /** Test if a path matches this URL pattern */
-    test(path: string): boolean;
-
-    /** Execute regex match on path */
-    exec(path: string): RegExpExecArray | null;
-
-    /** Extract parameters from path */
-    params(path: string): any[];
-
-    /** Resolve URL with parameters */
-    resolve(params?: RouteParams, options?: { query?: QueryParams; hash?: string }): string | null;
-
-    // Static methods
-    static normalize(url: string | RegExp): string | RegExp;
-    static isSameOrigin(a: string, b: string): boolean;
-    static parse(url: string): ParsedUrl;
-    static fromQueryString(query: string): QueryParams;
-    static toQueryString(queryObject: QueryParams | string): string;
-  }
-
   // Location module (client-side)
   namespace Location {
     interface State extends ParsedUrl {
@@ -663,8 +692,10 @@ declare namespace Iron {
     function start(): void;
     function stop(): void;
     function onClick(fn: (event: MouseEvent) => void): void;
-    function onGo(cb: (state: State) => void): void;
-    function onPopState(cb: (state: State) => void): void;
+    /** The callback receives the new state as `this` (no arguments are passed) */
+    function onGo(cb: (this: State) => void): void;
+    /** The callback receives the new state as `this` (no arguments are passed) */
+    function onPopState(cb: (this: State) => void): void;
   }
 
   // Utilities
@@ -686,34 +717,34 @@ declare namespace Iron {
     const global: typeof globalThis;
   }
 
-  // Class system
-  function Class(definition?: object): typeof Controller;
-
-  // Controller reference (template helper)
+  // The current route controller (reactive; template helper support)
   function controller(): RouteController | null;
 
-  // Layout class export
-  const Layout: typeof globalThis.Layout;
+  // Class exports (the constructors themselves)
+  const Url: UrlClass;
+  const Controller: ControllerClass;
+  const RouteController: RouteControllerClass;
+  const Route: RouteClass;
+  const Handler: HandlerClass;
+  const Layout: LayoutClass;
+  const DynamicTemplate: DynamicTemplateClass;
+  const MiddlewareStack: MiddlewareStackClass;
+  const WaitList: WaitListClass;
 
-  // DynamicTemplate class export
-  const DynamicTemplate: typeof globalThis.DynamicTemplate;
-
-  // MiddlewareStack class export
-  const MiddlewareStack: typeof globalThis.MiddlewareStack;
-
-  // Router class export
-  const Router: typeof globalThis.Router;
-
-  // RouteController class export
-  const RouteController: typeof globalThis.RouteController;
-
-  // WaitList class export
-  const WaitList: typeof globalThis.WaitList;
+  // The Router class (constructing one returns a callable router instance).
+  // Class-level configuration such as Router.hooks, Router.plugins and
+  // Router.bodyParser lives here, not on the global router instance.
+  const Router: RouterConstructor;
 }
 
-// Router class
-declare class Router {
-  constructor(options?: RouterOptions);
+/**
+ * A router instance: a callable connect-style middleware function carrying
+ * all router methods. The package's exported `Router` (and the `Router`
+ * global) is one of these, not the class; the class is `Iron.Router`.
+ */
+interface Router {
+  /** Routers are usable directly as connect-style middleware */
+  (req: Express.Request, res: Express.Response, next?: (err?: any) => void): void;
 
   /** Configure the router */
   configure(options: RouterOptions): Router;
@@ -727,7 +758,7 @@ declare class Router {
   /** Initialize the router */
   init(options?: RouterOptions): void;
 
-  /** Start the router (client-side) */
+  /** Start the router */
   start(): void;
 
   /** Stop the router */
@@ -800,28 +831,14 @@ declare class Router {
   /** Get the current controller */
   current(): RouteController | null;
 
-  /** Dispatch a URL */
-  dispatch(url: string, context?: object, done?: () => void): RouteController;
+  /** Dispatch a URL. Returns the new controller on the client, nothing on the server */
+  dispatch(url: string, context?: object, done?: (err?: any) => void): RouteController | void;
 
   /** Insert the router view into the DOM (client-side) */
   insert(options?: InsertOptions): Router;
 
   /** Create the router view (client-side) */
   createView(): Blaze.View;
-
-  // Static properties
-  static readonly HOOK_TYPES: string[];
-  static readonly hooks: {
-    loading: HookFunction;
-    dataNotFound: HookFunction;
-    [key: string]: HookFunction;
-  };
-  static readonly plugins: {
-    loading: (router: Router, options?: object) => void;
-    dataNotFound: (router: Router, options?: object) => void;
-    [key: string]: (router: Router, options?: object) => void;
-  };
-  static bodyParser: any;
 
   // Properties
   /**
@@ -840,12 +857,37 @@ declare class Router {
   _stack: MiddlewareStack;
   _globalHooks: { [type: string]: HookFunction[] };
   _locationComputation: Tracker.Computation | null;
-  _controllerRegistry: Map<string, typeof RouteController>;
+  _controllers: { [name: string]: typeof RouteController };
 }
 
-// Global Router instance
-declare const Router: Router & typeof Router;
-declare const RC: typeof RouteController;
+/**
+ * The Router class (Iron.Router). Class-level hooks, plugins and the body
+ * parser factory live here as statics.
+ */
+interface RouterConstructor {
+  new (options?: RouterOptions): Router;
+
+  readonly HOOK_TYPES: string[];
+  hooks: {
+    loading: HookFunction;
+    dataNotFound: HookFunction;
+    [key: string]: HookFunction;
+  };
+  plugins: {
+    loading: (router: Router, options?: object) => void;
+    dataNotFound: (router: Router, options?: object) => void;
+    [key: string]: (router: Router, options?: object) => void;
+  };
+  /** Body parser factory (server): json/urlencoded/text middleware creators */
+  bodyParser: any;
+}
+
+type RouterGlobal = Router;
+type IronNamespace = typeof Iron;
+
+// Global router instance
+declare const Router: Router;
+declare const RC: RouteControllerClass;
 
 // Express types for server-side request/response
 declare namespace Express {
@@ -875,19 +917,11 @@ declare namespace Express {
   }
 }
 
-// Global declarations
+// Global declarations (the package also exposes these as Meteor globals)
 declare global {
-  const Router: Router & typeof Router;
-  const Iron: typeof Iron;
-  const RouteController: typeof RouteController;
-
-  // Blaze template helpers
-  namespace Blaze {
-    interface TemplateInstance {
-      /** Get the current route controller */
-      controller(): RouteController | null;
-    }
-  }
+  const Router: RouterGlobal;
+  const Iron: IronNamespace;
+  const RouteController: RouteControllerClass;
 }
 
 export {
@@ -905,6 +939,7 @@ export {
   State,
   Iron,
   RC,
+  DEFAULT_REGION,
   urlToHashStyle,
   urlFromHashStyle,
   fixHashPath,
@@ -918,11 +953,11 @@ export {
   LayoutOptions,
   InsertOptions,
   RouteParams,
+  ControllerParams,
   QueryParams,
   HttpMethod,
   ParsedUrl,
   RegionTemplate,
   SubscriptionHandleWithWait,
-  Handler,
   DynamicTemplateOptions,
 };

@@ -23,6 +23,15 @@ Unreleased
 * Fix server HEAD responses calling `res.end()` twice in the no-client-routes branch
 * Add regression tests throughout: end-to-end server REST tests (JSON body parsing, async actions, async 500s), multi-level inheritance instance state, native-class hook/event collection, prototype-safe query parsing, Array-member route names, and init-once semantics
 * Housekeeping: declare the `reactive-var` dependency on the server too (previously satisfied only via Blaze's transitive dependency), remove the long-dead `lib/url/old_compiler.js`, give two test files descriptive names, and bring `lib/url/compiler.js` under type checking
+* Deliver TypeScript definitions via `zodern:types` (the mechanism Meteor 3's own docs recommend): `package-types.json` now points at `index.d.ts`, replacing the ignored `types:` describe key and the `addAssets` workaround that also served the declaration file to browsers as a public static asset
+* Overhaul `index.d.ts` to match the real runtime API
+  * The declaration file now compiles cleanly under `skipLibCheck: false` (previously 15 errors: duplicate `Handler` exports, circular global self-references, a `Route.options` method/property collision, and `typeof globalThis.X` lookups that never resolved)
+  * `this.params` is now typed as what it really is: an array of positional match groups carrying the named params, plus `query` and `hash` properties (`ControllerParams`); same for `Route#params`, `Url#params` and `Handler#params`
+  * The exported `Router` is typed as the callable router instance; class-level configuration (`hooks`, `plugins`, `bodyParser`, `HOOK_TYPES`) is typed on `Iron.Router` where it actually lives
+  * Removed phantom APIs: `Iron.Class` (real: `Iron.utils.extend`/`inherits`), `Route#options(fn)` (there is no OPTIONS verb), a `Blaze.TemplateInstance#controller()` augmentation nothing implements, and `Router._controllerRegistry` (real: `_controllers`)
+  * Added missing APIs: `Iron.Controller`, `Iron.Route`, `Iron.Handler`, `DEFAULT_REGION`, `MiddlewareStack#onServerDispatch`, and the path-less `stack.push(fn, options)` overloads
+  * `Location.onGo`/`onPopState` callbacks are now typed with the state as `this` (they receive no arguments); client-only entry exports (`Location`, `State`, `WaitList`, hash-url helpers) are marked as such
+* `Router.onBeforeAction()` and the other hook registration methods now return the router (chainable), as `addHook` already did
 
 v2.1.3 / 2026-06-23
 ==================
