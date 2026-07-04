@@ -5,6 +5,10 @@ smart.lock
 versions.json
 .versions
 
+# npm (dev tooling only; this is a Meteor package, deps come via package.js)
+node_modules/
+package-lock.json
+
 #AI tools
 .claude/
 .codex/
