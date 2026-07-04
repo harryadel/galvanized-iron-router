@@ -203,3 +203,28 @@ Tinytest.add('Controller - init runs exactly once', function (test) {
   new C;
   test.equal(count, 1, 'init should run once for direct Controller subclasses');
 });
+
+Tinytest.add('Controller - event maps from intermediate native class ancestors', function (test) {
+  class EventsBase extends Iron.Controller {}
+  EventsBase.events({'click .base': function () {}});
+
+  class EventsChild extends EventsBase {}
+  EventsChild.events({'click .child': function () {}});
+
+  var map = Iron.Controller._collectEventMaps.call(EventsChild);
+  test.isTrue(!!map['click .base'], 'event from intermediate native ancestor collected');
+  test.isTrue(!!map['click .child'], 'own event collected');
+});
+
+Tinytest.add('Controller - helpers do not leak across native subclasses', function (test) {
+  class HelperA extends Iron.Controller {}
+  class HelperB extends Iron.Controller {}
+
+  HelperA.helpers({onlyA: function () { return 'a'; }});
+  HelperB.helpers({onlyB: function () { return 'b'; }});
+
+  test.isFalse(Object.prototype.hasOwnProperty.call(Iron.Controller._helpers, 'onlyA'),
+    'base Controller helpers must not be polluted by a subclass');
+  test.isFalse('onlyA' in HelperB._helpers, 'sibling subclasses must not see each other\'s helpers');
+  test.isTrue(!!HelperA._helpers.onlyA, 'subclass keeps its own helper');
+});

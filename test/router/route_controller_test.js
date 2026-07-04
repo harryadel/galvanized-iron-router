@@ -178,3 +178,55 @@ Tinytest.add('RouteController - multi-level extend chains produce initialized co
   test.isTrue(!!c._layout, 'layout initialized by the Controller base constructor');
   test.instanceOf(c, Iron.RouteController);
 });
+
+Tinytest.add('RouteController - hooks from intermediate native class ancestors', function (test) {
+  var calls = [];
+
+  class AuthController extends Iron.RouteController {
+    onBeforeAction() {
+      calls.push('auth');
+    }
+  }
+
+  class AdminController extends AuthController {}
+
+  var router = new Iron.Router({autoStart: false, autoRender: false});
+  var route = router.route('/admin-native-hooks', {controller: AdminController});
+  var c = route.createController({});
+  c.router = router;
+  c.route = route;
+
+  c.runHooks('onBeforeAction', 'before');
+  test.equal(calls, ['auth'], 'a hook defined on an intermediate native class ancestor must run');
+});
+
+Tinytest.add('RouteController - hooks across mixed extend()/class chains run super-first', function (test) {
+  var calls = [];
+
+  var ExtendBase = Iron.RouteController.extend({
+    onAfterAction: function () {
+      calls.push('extendBase');
+    }
+  });
+
+  class ClassMid extends ExtendBase {
+    onAfterAction() {
+      calls.push('classMid');
+    }
+  }
+
+  var Leaf = ClassMid.extend({
+    onAfterAction: function () {
+      calls.push('extendLeaf');
+    }
+  });
+
+  var router = new Iron.Router({autoStart: false, autoRender: false});
+  var route = router.route('/mixed-chain-hooks', {controller: Leaf});
+  var c = route.createController({});
+  c.router = router;
+  c.route = route;
+
+  c.runHooks('onAfterAction', 'after');
+  test.equal(calls, ['extendBase', 'classMid', 'extendLeaf'], 'every level runs, superclass hooks first');
+});
