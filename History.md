@@ -1,9 +1,27 @@
 Unreleased
 ==================
+* Fix server body parsers never being installed since the v2.1.0 ES6 module conversion: `this.request.body` was always `undefined` for server REST routes (`configureBodyParsers` was calling a do-nothing static stub). Server `Router.start()` is now also idempotent
+* Support async (promise-returning) route handlers, the common case on Meteor 3
+  * An async action that throws now returns a 500 instead of hanging the request as an unhandled promise rejection (fatal on modern Node)
+  * `await ...; this.next()` works: dispatch bookkeeping is deferred until in-flight handlers settle
+  * `onAfterAction` hooks (client and server) run after an async action completes, not after its first `await`
+  * A handler that calls `next()` and rejects afterwards can no longer complete the stack twice (the late rejection is logged)
+* Fix multi-level `extend()` chains producing uninitialized controllers: `ApplicationController = RouteController.extend({...}); PostController = ApplicationController.extend({...})` left instances without `options`/`params`/`_layout`. `Iron.utils.extend` now produces a genuine `class extends Parent` at every level
+  * Semantics note: a custom `constructor` prop now always runs *after* the parent chain (previously, with a plain-function parent, it *replaced* the parent constructor). It must not call `__super__.constructor` itself
+* Fix hooks, event maps and helpers silently lost on native class chains: `class Admin extends Auth extends RouteController` skipped `Auth`'s `onBeforeAction`/`waitOn`/`events()` entirely; `Controller.helpers()` on a native subclass leaked helpers to the parent and every sibling
+* Harden URL parsing
+  * `GET /route?__proto__[]=x` (or any query key naming an `Object.prototype` member) crashed dispatch; query keys are now assigned prototype-safely
+  * Query values containing `=` (e.g. base64 padding) are no longer truncated
+  * `+` is now literal in path segments (RFC 3986); plus-as-space applies to query strings only
+* Fix routes named after Array members (`/push`, `/map`, `/length`, ...) corrupting the router; named handlers and routes now live in prototype-less side maps, with a new `Router.findRouteByName(name)` lookup (the legacy `Router.routes.someName` alias remains for non-colliding names)
+* Make the controller registry minifier-safe: only an *own* `static _name` keys a registration, overwrites log a warning, and the docs now recommend the object-map `registerControllers({...})` form whose keys survive minification
+* Fix client `Router.stop()` being a permanent no-op (`start()` never set `_isStarted`); repeated `start()` calls no longer stack duplicate location autoruns
+* Fix duplicate *explicitly named* middleware being silently allowed (`stack.push(fn, {name: 'auth'})` twice now throws, as v2.1.0 intended)
 * Fix `init()` being called twice on every `RouteController` instantiation (inherited from upstream iron:router)
   * Both the `Controller` and `RouteController` constructors called `this.init(options)`, so user-defined `init` hooks ran twice and on the client the controller's `WaitList` and reactive state dictionary were allocated twice, with the first pair discarded
   * The base constructor now skips the call when a subclass declares (via a `_deferInit` prototype getter) that it calls `init()` itself once construction is complete, so `init()` runs exactly once, on a fully constructed controller
-* Add regression tests asserting `init()` runs exactly once for class-based controllers, `extend()` controllers, and direct `Controller` subclasses
+* Fix server HEAD responses calling `res.end()` twice in the no-client-routes branch
+* Add regression tests throughout: end-to-end server REST tests (JSON body parsing, async actions, async 500s), multi-level inheritance instance state, native-class hook/event collection, prototype-safe query parsing, Array-member route names, and init-once semantics
 
 v2.1.3 / 2026-06-23
 ==================

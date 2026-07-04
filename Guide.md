@@ -1180,15 +1180,15 @@ import { DashboardController } from './management/dashboard.js';
 import { StoreController } from './management/store.js';
 import { UsersController } from './management/users.js';
 
-Router.registerControllers([
+Router.registerControllers({
   DashboardController,
   StoreController,
   UsersController
-]);
+});
 ```
 
-Routes work exactly as before - controller names are extracted automatically
-from the class:
+The object-map form is recommended: object literal keys survive minification.
+Routes work exactly as before:
 
 ```javascript
 Router.route('/dashboard', { controller: 'DashboardController' });
@@ -1201,16 +1201,12 @@ For anonymous controllers or custom names, use the two-argument form:
 Router.registerController('MyController', RouteController.extend({ ... }));
 ```
 
-Alternatively, you can register a controller map to avoid relying on constructor
-names (useful for controllers created via `RouteController.extend()`):
-
-```javascript
-Router.registerControllers({
-  DashboardController,
-  StoreController,
-  UsersController
-});
-```
+An array form also exists (`Router.registerControllers([DashboardController])`),
+but it derives each registry key from the class's `name` (or a `static _name`),
+and production minifiers mangle class names - an app that works in development
+can then fail in production with `RouteController 'DashboardController' is not
+defined`. Only use the array form if each controller defines
+`static _name = 'DashboardController'`.
 
 When resolving a controller by name, the router checks:
 

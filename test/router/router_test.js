@@ -284,3 +284,56 @@ if (Meteor.isServer) {
     });
   });
 }
+
+Tinytest.add('Router - routes named after Array members do not corrupt the router', function (test) {
+  var router = new Iron.Router({autoStart: false, autoRender: false});
+
+  // each of these previously shadowed a method on the routes array / stack
+  router.route('/push', function () {});
+  router.route('/map', function () {});
+  router.route('/length', function () {});
+  router.route('/ordinary', function () {});
+
+  test.equal(router.routes.length, 4, 'routes array stays intact');
+  test.isTrue(!!router.findRouteByName('push'), 'route named push is addressable by name');
+  test.isTrue(!!router.findRouteByName('length'), 'route named length is addressable by name');
+  test.equal(typeof router.routes.push, 'function', 'Array.prototype.push not shadowed');
+  test.isTrue(!!router.routes.ordinary, 'legacy Router.routes.name alias still works for safe names');
+});
+
+Tinytest.add('Router - registerController ignores inherited _name', function (test) {
+  var router = new Iron.Router({autoStart: false, autoRender: false});
+
+  class NamedBase extends Iron.RouteController {}
+  NamedBase._name = 'NamedBase';
+  class SubClass extends NamedBase {}
+
+  router.registerControllers([NamedBase, SubClass]);
+  test.equal(router.getController('NamedBase'), NamedBase, 'base registered under its own _name');
+  test.equal(router.getController('SubClass'), SubClass, 'subclass must not register under the inherited _name');
+});
+
+if (Meteor.isClient) {
+  Tinytest.addAsync('Router - client - onAfterAction waits for an async action', function (test, onComplete) {
+    var router = new Iron.Router({autoRender: false, autoStart: false});
+    var order = [];
+
+    router.route('/async-after', {
+      onAfterAction: function () {
+        order.push('after');
+      },
+      action: async function () {
+        await new Promise(function (resolve) { setTimeout(resolve, 10); });
+        order.push('action');
+        this.stop();
+      }
+    });
+
+    router.dispatch('/async-after', {request: {url: '/async-after'}, response: {}});
+
+    setTimeout(function () {
+      test.equal(order, ['action', 'after'], 'onAfterAction must run after the async action completes');
+      onComplete();
+    }, 60);
+  });
+}

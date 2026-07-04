@@ -739,6 +739,13 @@ declare class Router {
   /** Find the first matching route for a URL */
   findFirstRoute(url: string): Route | null;
 
+  /**
+   * Look up a route by name. Safe for any route name, including ones that
+   * collide with Array members (a route at /push or /length), which the
+   * legacy Router.routes.someName alias cannot express.
+   */
+  findRouteByName(name: string): Route | undefined;
+
   /** Get the path for a named route */
   path(routeName: string, params?: RouteParams, options?: { query?: QueryParams; hash?: string }): string | null;
 
@@ -817,7 +824,12 @@ declare class Router {
   static bodyParser: any;
 
   // Properties
-  routes: Route[];
+  /**
+   * All routes in definition order. Also carries a legacy name => route
+   * alias for names that don't collide with Array members; prefer
+   * findRouteByName() for lookups.
+   */
+  routes: Route[] & { [name: string]: Route | undefined };
   options: RouterOptions;
 
   // Internal properties

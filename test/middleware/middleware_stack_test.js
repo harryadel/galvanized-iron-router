@@ -281,3 +281,53 @@ Tinytest.addAsync('MiddlewareStack - async rejection is caught by error middlewa
     onComplete();
   });
 });
+
+Tinytest.add('MiddlewareStack - handler names colliding with Array members', function (test) {
+  var stack = new Iron.MiddlewareStack;
+
+  stack.push('/x', function () {}, {name: 'push'});
+  stack.push('/y', function () {}, {name: 'map'});
+  stack.push('/z', function () {}, {name: 'zed'});
+
+  test.equal(stack.length, 3, 'stack still accepts handlers after method-name collisions');
+  test.isTrue(!!stack.findByName('push'), 'handler named push is addressable');
+  test.isUndefined(stack.findByName('slice'), 'findByName no longer resolves Array.prototype members');
+  test.throws(function () {
+    stack.insertBefore('slice', '/q', function () {});
+  }, /Couldn't find a handler/);
+});
+
+Tinytest.add('MiddlewareStack - explicit duplicate middleware names are rejected', function (test) {
+  var stack = new Iron.MiddlewareStack;
+
+  stack.push(function () {}, {name: 'auth'});
+  test.throws(function () {
+    stack.push(function () {}, {name: 'auth'});
+  }, /already exists/);
+});
+
+Tinytest.addAsync('MiddlewareStack - late rejection after next() does not complete the stack twice', function (test, onComplete) {
+  var stack = new Iron.MiddlewareStack;
+  var whereEnv = {where: Meteor.isServer ? 'server' : 'client'};
+  var doneCalls = [];
+
+  stack.push(async function (req, res, next) {
+    this.next();
+    await new Promise(function (resolve) { setTimeout(resolve, 5); });
+    throw new Error('late rejection');
+  }, whereEnv);
+
+  stack.push(function (req, res, next) {
+    this.next();
+  }, whereEnv);
+
+  stack.dispatch('/', {}, function (err) {
+    doneCalls.push(err);
+  });
+
+  setTimeout(function () {
+    test.equal(doneCalls.length, 1, 'done must be called exactly once');
+    test.isUndefined(doneCalls[0], 'the successful completion wins; the late rejection is logged');
+    onComplete();
+  }, 40);
+});
