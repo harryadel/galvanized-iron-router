@@ -130,3 +130,32 @@ Tinytest.add('RouteController - hooks - inheritance order', function (test) {
 
 Tinytest.add('RouteController - hooks - pausing in before hooks', function (test) {
 });
+
+Tinytest.add('RouteController - init runs exactly once per instantiation', function (test) {
+  var count;
+  var router = new Iron.Router({autoStart: false, autoRender: false});
+
+  class ClassController extends Iron.RouteController {
+    init(options) {
+      count++;
+      super.init(options);
+    }
+  }
+
+  count = 0;
+  var classRoute = router.route('/class-init', {controller: ClassController});
+  classRoute.createController({});
+  test.equal(count, 1, 'init should run once for class controllers');
+
+  var ExtendController = Iron.RouteController.extend({
+    init: function (options) {
+      count++;
+      ExtendController.__super__.init.apply(this, arguments);
+    }
+  });
+
+  count = 0;
+  var extendRoute = router.route('/extend-init', {controller: ExtendController});
+  extendRoute.createController({});
+  test.equal(count, 1, 'init should run once for extend() controllers');
+});

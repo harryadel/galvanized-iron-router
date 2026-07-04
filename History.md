@@ -1,3 +1,10 @@
+Unreleased
+==================
+* Fix `init()` being called twice on every `RouteController` instantiation (inherited from upstream iron:router)
+  * Both the `Controller` and `RouteController` constructors called `this.init(options)`, so user-defined `init` hooks ran twice and on the client the controller's `WaitList` and reactive state dictionary were allocated twice, with the first pair discarded
+  * The base constructor now skips the call when a subclass declares (via a `_deferInit` prototype getter) that it calls `init()` itself once construction is complete, so `init()` runs exactly once, on a fully constructed controller
+* Add regression tests asserting `init()` runs exactly once for class-based controllers, `extend()` controllers, and direct `Controller` subclasses
+
 v2.1.3 / 2026-06-23
 ==================
 * Fix `this.params.query` returning `{}` (query string parameters not parsed) (GH #6)

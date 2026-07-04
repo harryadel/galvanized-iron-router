@@ -191,3 +191,15 @@ Tinytest.add('Controller - reactive state variables', function (test) {
     test.equal(el.innerHTML.compact(), "2");
   });
 });
+
+Tinytest.add('Controller - init runs exactly once', function (test) {
+  var count = 0;
+  var C = Iron.Controller.extend({
+    init: function (options) {
+      count++;
+      C.__super__.init.apply(this, arguments);
+    }
+  });
+  new C;
+  test.equal(count, 1, 'init should run once for direct Controller subclasses');
+});
