@@ -225,3 +225,10 @@ Tinytest.add('Url - plus is a space in query strings but literal in paths', func
   test.equal(url.params('/search/c%2B%2B').term, 'c++', 'encoded + in path decodes to +');
   test.equal(url.params('/search/a+b').term, 'a+b', 'literal + in a path segment is not a space');
 });
+
+Tinytest.add('Url - fromQueryString skips keys that fail to decode', function (test) {
+  var q = Url.fromQueryString('?%ZZ=1&ok=2');
+  test.isFalse(Object.prototype.hasOwnProperty.call(q, 'undefined'),
+    "an undecodable key must not become a property named 'undefined'");
+  test.equal(q.ok, '2', 'well-formed pairs still parse');
+});

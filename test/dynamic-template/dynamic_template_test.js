@@ -492,3 +492,19 @@ Tinytest.add('DynamicTemplate - extra inclusion arguments do not become the data
     test.equal(el.innerHTML.compact(), 'parent');
   });
 });
+
+Template.ValueDataHost.helpers({
+  valueData: function () {
+    return {value: 42};
+  }
+});
+Tinytest.add('DynamicTemplate - data context literally shaped {value: X} survives', function (test) {
+  // Published Blaze 3.x wraps EVERY with-view data context as {value: data}
+  // (Blaze.getData itself reads dataVar.get()?.value), so a genuine
+  // {value: 42} context arrives double-wrapped and one unwrap returns it
+  // intact. This pins that contract: it fails if a future Blaze stops
+  // wrapping dataVar while _unwrapBlaze3Value still strips the shape.
+  withRenderedTemplate('ValueDataHost', (el) => {
+    test.equal(el.innerHTML.compact(), 'v-42');
+  });
+});

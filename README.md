@@ -1,7 +1,7 @@
 Galvanized Iron Router
 ==============================================================================
 
-[![Version](https://img.shields.io/badge/version-2.2.0-blue.svg)](https://atmospherejs.com/vlasky/galvanized-iron-router)
+[![Version](https://img.shields.io/badge/version-2.2.1-blue.svg)](https://atmospherejs.com/vlasky/galvanized-iron-router)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 Galvanized Iron Router is a fork of the classic Iron Router package, giving it a new lease of life by making it fully compatible with Meteor 3.0 and beyond. Just as galvanizing iron makes it rust-resistant and longer lasting, this fork ensures Iron Router continues to work reliably with modern Meteor applications.
@@ -186,6 +186,10 @@ If you want to setup subscriptions but not have an automatic loading hook, use t
 Hooks and options are inherited from parent controllers and the router. The order of precedence is: route; controller; parent controller; router.
 
 Option lookup treats `undefined` as "not set" and will fall through to lower-precedence sources. If you need to explicitly clear an option, use `null`.
+
+### Custom constructor in extend() (changed in 2.2.0)
+
+A custom `constructor:` property passed to `RouteController.extend()` (or `Iron.utils.extend`) now always runs *after* the parent constructor chain, as a post-construction initializer. Previously, with a plain-function parent, it *replaced* the parent constructor. It must not call `__super__.constructor` itself (with an ES6 class ancestor that call throws). Code that relied on the old replacement behaviour needs updating; in most cases an `init` method or the standard hooks are the better tool.
 
 ### Route names
 

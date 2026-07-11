@@ -102,3 +102,11 @@ Two
     {{> DynamicTemplate template="ShowName" extra="e"}}
   {{/with}}
 </template>
+
+<template name="ValueDataHost">
+  {{#with valueData}}
+    {{> DynamicTemplate template="ShowValue"}}
+  {{/with}}
+</template>
+
+<template name="ShowValue">v-{{value}}</template>

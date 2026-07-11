@@ -1,3 +1,12 @@
+v2.2.1 / 2026-07-11
+==================
+* `Iron.utils.extend` and `Iron.utils.inherits` no longer copy statics with `EJSON.clone`, which silently mangled any non-EJSON object static: a `RegExp`, `Map`, `Set` or prototyped instance hung off a controller became `{}` on the child. Plain objects and arrays are still shallow-copied (so top-level child mutations don't write through to the parent); everything else now passes by reference with its type intact
+* `Url.fromQueryString` skips query pairs whose key fails to decode (e.g. `?%ZZ=1`) instead of creating a property literally named `"undefined"`
+* The parent-view walk caps in `DynamicTemplate.getDataContext` (30) and `getInclusionArguments` (15) now emit a console warning when actually reached, instead of silently returning an absent context in pathologically deep view trees
+* Add a regression test pinning that a data context literally shaped `{value: X}` reaches templates intact: published Blaze 3.x wraps *every* data context as `{value: data}` (`Blaze.getData` itself reads `dataVar.get()?.value`), so Iron's single unwrap mirrors Blaze's own contract and a genuine `{value: X}` context arrives double-wrapped and survives. The test will surface any future Blaze change to this behaviour
+* Fix the Blaze 2 detection that was supposed to disable the `{value}` unwrapping on Meteor 2: it sniffed the nonexistent `Package.blaze.version`, so it always answered "Blaze 3" and a genuine `{value: X}` data context was corrupted on Blaze 2 (caught by the new pinning test on the Meteor 2 leg). Detection now keys off `Meteor.isFibersDisabled`
+* Document the 2.2.0 `extend()` custom-constructor semantics change in the README API notes (previously only in this changelog)
+
 v2.2.0 / 2026-07-05
 ==================
 * Verified against Meteor 3.5 (released 2026-07-01, Node 24), Meteor 3.4.1 (Node 22) and Meteor 2.8.1 (Node 14, fibers, npm `body-parser` branch): full test suite passes on all three

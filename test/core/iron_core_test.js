@@ -207,3 +207,28 @@ Tinytest.add('Utils - extend does not copy parent registry name', function (test
   test.isFalse(Object.prototype.hasOwnProperty.call(Child, '_name'),
     'a child must not receive its parent _name as an own registry key');
 });
+
+Tinytest.add('Utils - extend and inherits preserve exotic static types', function (test) {
+  var Parent = function () {};
+  Parent.pattern = /^abc$/i;
+  Parent.registry = new Map([['a', 1]]);
+  Parent.config = {mode: 'x'};
+
+  var Child = Iron.utils.extend(Parent, {});
+
+  // EJSON.clone silently mangled non-EJSON statics into {}
+  test.instanceOf(Child.pattern, RegExp, 'RegExp static lost its type');
+  test.equal(Child.pattern.source, '^abc$');
+  test.instanceOf(Child.registry, Map, 'Map static lost its type');
+  test.equal(Child.registry.get('a'), 1);
+
+  // plain-object statics are still copied: child mutations must not write
+  // through to the parent
+  Child.config.mode = 'y';
+  test.equal(Parent.config.mode, 'x', 'child static mutation leaked to the parent');
+
+  var Sub = function () {};
+  Iron.utils.inherits(Sub, Parent);
+  test.instanceOf(Sub.pattern, RegExp, 'inherits mangled a RegExp static');
+  test.instanceOf(Sub.registry, Map, 'inherits mangled a Map static');
+});
