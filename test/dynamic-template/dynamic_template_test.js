@@ -303,6 +303,45 @@ Tinytest.add('DynamicTemplate - From JavaScript', function (test) {
   });
 });
 
+Tinytest.add('DynamicTemplate - insert accepts a direct element', function (test) {
+  const el = document.createElement('div');
+  const tmpl = new Iron.DynamicTemplate({defaultTemplate: 'One'});
+  document.body.appendChild(el);
+
+  try {
+    tmpl.insert({el: el});
+    Tracker.flush();
+    test.equal(el.innerHTML.compact(), 'One');
+  } finally {
+    tmpl.destroy();
+    el.remove();
+  }
+});
+
+Tinytest.add('DynamicTemplate - insert resolves a CSS selector', function (test) {
+  const el = document.createElement('div');
+  const tmpl = new Iron.DynamicTemplate({defaultTemplate: 'One'});
+  el.id = 'dynamic-template-insert-target';
+  document.body.appendChild(el);
+
+  try {
+    tmpl.insert({el: '#dynamic-template-insert-target'});
+    Tracker.flush();
+    test.equal(el.innerHTML.compact(), 'One');
+  } finally {
+    tmpl.destroy();
+    el.remove();
+  }
+});
+
+Tinytest.add('DynamicTemplate - insert rejects a missing selector', function (test) {
+  const tmpl = new Iron.DynamicTemplate({defaultTemplate: 'One'});
+
+  test.throws(function () {
+    tmpl.insert({el: '#dynamic-template-missing-target'});
+  }, /No element to insert layout into/);
+});
+
 Tinytest.add('DynamicTemplate - default template', function (test) {
   const tmpl = new Iron.DynamicTemplate({defaultTemplate: 'One'});
 
@@ -396,8 +435,8 @@ Tinytest.add('DynamicTemplate - event handlers', function (test) {
   }, thisArg);
 
   withRenderedTemplate(tmpl.create(), (el) => {
-    const $target = $(el).find('.click');
-    $target.trigger('click');
+    const target = el.querySelector('.click');
+    target.click();
     test.equal(calls, 1);
 
     // now change the events
@@ -410,7 +449,7 @@ Tinytest.add('DynamicTemplate - event handlers', function (test) {
       }
     }, {isNew: true});
 
-    $target.trigger('click');
+    target.click();
     test.equal(calls, 2);
   });
 });

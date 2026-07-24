@@ -109,6 +109,37 @@ if (Meteor.isClient) {
 }
 
 if (Meteor.isClient) {
+  Tinytest.add('Router - scrollToHash uses decoded element ids and native scrolling', function (test) {
+    var router = new Iron.Router({autoRender: false, autoStart: false});
+    var target = document.createElement('div');
+    var scrollTo = window.scrollTo;
+    var scrollCalls = [];
+
+    target.id = 'hash target';
+    target.getBoundingClientRect = function () {
+      return {top: 125};
+    };
+    document.body.appendChild(target);
+    window.scrollTo = function (x, y) {
+      scrollCalls.push([x, y]);
+    };
+
+    try {
+      router._scrollToHash('#hash%20target');
+      test.equal(scrollCalls, [[window.scrollX, 125 + window.scrollY]],
+        'encoded fragment resolves and preserves horizontal scroll');
+
+      router._scrollToHash('#missing-target');
+      router._scrollToHash('#%ZZ');
+      test.equal(scrollCalls.length, 1, 'missing and malformed fragments are ignored');
+    } finally {
+      window.scrollTo = scrollTo;
+      target.remove();
+    }
+  });
+}
+
+if (Meteor.isClient) {
   Tinytest.add('Router - dispatch - same route', function (test) {
     // if we go from one url to the next and its the same route, we don't
     // need to create a new controller instance. this tests that we keep

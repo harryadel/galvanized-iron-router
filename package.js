@@ -28,7 +28,6 @@ Package.onUse(function (api) {
   // Reactive state (DynamicTemplate uses ReactiveVar on both client and server)
   api.use('reactive-var');
   api.use('reactive-dict', 'client');
-  api.use('jquery@1.11.11 || 3.0.0', 'client');
 
   // UI/Template dependencies
   api.use('blaze@2.4.0 || 3.0.0');

@@ -1,3 +1,7 @@
+Unreleased
+==================
+* Remove the router's client-side jQuery dependency and replace its event delegation, template insertion, hash scrolling, tests and executable example usage with native DOM APIs. Blaze 3.1+ applications can now omit the `jquery` package
+
 v2.2.1 / 2026-07-11
 ==================
 * `Iron.utils.extend` and `Iron.utils.inherits` no longer copy statics with `EJSON.clone`, which silently mangled any non-EJSON object static: a `RegExp`, `Map`, `Set` or prototyped instance hung off a controller became `{}` on the child. Plain objects and arrays are still shallow-copied (so top-level child mutations don't write through to the parent); everything else now passes by reference with its type intact

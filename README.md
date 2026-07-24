@@ -21,6 +21,11 @@ meteor add vlasky:galvanized-iron-router
 
 Galvanized Iron Router supports all versions of Meteor from version 2.8.1 onwards. It has been tested on Meteor 2.8.1, 3.4 and 3.5, including Meteor 3.5's Rspack bundler integration.
 
+Galvanized Iron Router does not depend on jQuery. Applications using Blaze
+3.1 or newer can omit the `jquery` package and use Blaze's native DOM
+backend. Custom `linkSelector` values and string `InsertOptions.el` values use
+standard CSS selector syntax.
+
 For Meteor 3.0+ projects, Galvanized Iron Router automatically adapts to:
 - Async/await execution model (no Fibers dependency)
 - Express 5 body parsing (when available)
