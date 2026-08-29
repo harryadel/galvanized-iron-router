@@ -342,6 +342,30 @@ Tinytest.add('DynamicTemplate - insert rejects a missing selector', function (te
   }, /No element to insert layout into/);
 });
 
+Tinytest.add('DynamicTemplate - insert unwraps an array-like element wrapper', function (test) {
+  const el = document.createElement('div');
+  const tmpl = new Iron.DynamicTemplate({defaultTemplate: 'One'});
+  document.body.appendChild(el);
+
+  try {
+    // e.g. a jQuery collection, which insert() has accepted since 1.x
+    tmpl.insert({el: {0: el, length: 1}});
+    Tracker.flush();
+    test.equal(el.innerHTML.compact(), 'One');
+  } finally {
+    tmpl.destroy();
+    el.remove();
+  }
+});
+
+Tinytest.add('DynamicTemplate - insert rejects an empty array-like wrapper', function (test) {
+  const tmpl = new Iron.DynamicTemplate({defaultTemplate: 'One'});
+
+  test.throws(function () {
+    tmpl.insert({el: {length: 0}});
+  }, /No element to insert layout into/);
+});
+
 Tinytest.add('DynamicTemplate - default template', function (test) {
   const tmpl = new Iron.DynamicTemplate({defaultTemplate: 'One'});
 

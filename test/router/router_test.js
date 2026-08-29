@@ -249,6 +249,24 @@ if (Meteor.isServer) {
     test.equal(after - before, 2, 'json and urlencoded body parsers should be added as instance hooks');
   });
 
+  Tinytest.add('Router - server - jquery warning fires only on Meteor 2 without client jquery', function (test) {
+    var needsWarning = Iron.Router._needsJqueryWarning;
+    test.isTrue(needsWarning(false, undefined), 'Meteor 2 without jquery in the client bundle warns');
+    test.isFalse(needsWarning(true, undefined), 'Meteor 2 with jquery in the client bundle does not warn');
+    test.isFalse(needsWarning(null, undefined), 'an unknown client bundle stays silent');
+    test.isFalse(needsWarning(false, true), 'Meteor 3 never warns (Blaze version is unknowable server-side)');
+    test.isFalse(needsWarning(true, true), 'Meteor 3 with jquery does not warn');
+  });
+
+  Tinytest.add('Router - server - client bundle jquery detection reads the program manifest', function (test) {
+    // The test client always contains jquery (the Tinytest driver depends on
+    // it), so the manifest check must report true here on every Meteor
+    // version - this is exactly the case the server Package namespace gets
+    // wrong, since the driver's jquery dependency is client-only.
+    test.equal(Iron.Router._clientBundleHasJquery(), true,
+      'jquery is present in the test client bundle');
+  });
+
   // Route definition and start live at module scope: Tinytest re-runs test
   // bodies on every client test run, and defining the same route twice throws.
   Router.route('/test-body-parser-post', {where: 'server'}).post(function () {

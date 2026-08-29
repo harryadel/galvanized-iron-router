@@ -76,3 +76,25 @@ Tinytest.add('Location - stop and restart manage one document listener', functio
     document.removeEventListener = removeEventListener;
   }
 });
+
+Tinytest.add('Location - configure and start reject an invalid linkSelector', function (test) {
+  var options = Iron.Location.options;
+  var original = options.linkSelector;
+
+  test.throws(function () {
+    Iron.Location.configure({linkSelector: 'a:visible'});
+  }, /Invalid linkSelector/);
+  test.equal(options.linkSelector, original,
+    'a rejected selector leaves the options unchanged');
+
+  options.linkSelector = 'a[';
+  try {
+    Iron.Location.stop();
+    test.throws(function () {
+      Iron.Location.start();
+    }, /Invalid linkSelector/);
+  } finally {
+    options.linkSelector = original;
+    Iron.Location.start();
+  }
+});
